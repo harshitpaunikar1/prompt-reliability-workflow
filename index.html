@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prompt Reliability Workflow</title>
+  <meta name="description" content="A black-and-white reliability-engineering article on prompt evaluation, version control, scoring, review loops, and drift detection over time.">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f2f2f2;
+      --paper: #ffffff;
+      --panel: #f7f7f7;
+      --ink: #111111;
+      --muted: #5b5b5b;
+      --line: #d4d4d4;
+      --line-strong: #8c8c8c;
+      --accent: #000000;
+      --shadow: rgba(0, 0, 0, 0.05);
+      --mono: "IBM Plex Mono", monospace;
+      --sans: "IBM Plex Sans", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    html {
+      scroll-behavior: smooth;
+      background: var(--bg);
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: var(--sans);
+      background:
+        linear-gradient(180deg, #ececec 0%, #f5f5f5 15%, #f2f2f2 100%);
+    }
+
+    a { color: inherit; }
+
+    .page {
+      width: min(1180px, calc(100vw - 32px));
+      margin: 20px auto 48px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      box-shadow: 0 24px 50px var(--shadow);
+    }
+
+    .masthead {
+      padding: 28px 28px 18px;
+      border-bottom: 1px solid var(--line);
+      background:
+        linear-gradient(180deg, #fbfbfb 0%, #f4f4f4 100%);
+    }
+
+    .kicker,
+    .eyebrow,
+    .caption,
+    .card-label,
+    .measure dt,
+    .toc a,
+    pre,
+    code {
+      font-family: var(--mono);
+    }
+
+    .kicker {
+      margin: 0 0 16px;
+      font-size: 12px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    h1 {
+      margin: 0 0 16px;
+      max-width: 10ch;
+      font-size: clamp(2.9rem, 5vw, 4.8rem);
+      line-height: 0.95;
+      letter-spacing: -0.04em;
+      text-transform: uppercase;
+    }
+
+    .lede {
+      max-width: 72ch;
+      margin: 0;
+      font-size: 1.08rem;
+      line-height: 1.75;
+      color: #202020;
+    }
+
+    .header-grid,
+    .metrics,
+    .score-row,
+    .summary-grid,
+    .diagram-grid,
+    .code-grid,
+    .stage-grid,
+    .drift-grid {
+      display: grid;
+      gap: 16px;
+    }
+
+    .header-grid {
+      grid-template-columns: 1.7fr 1fr;
+      margin-top: 28px;
+    }
+
+    .panel,
+    .score-card,
+    .summary-card,
+    .code-block,
+    .note,
+    .stage-card,
+    .toc,
+    figure {
+      background: var(--panel);
+      border: 1px solid var(--line);
+    }
+
+    .panel {
+      padding: 18px;
+    }
+
+    .panel p {
+      margin: 0;
+      line-height: 1.65;
+      color: #222222;
+    }
+
+    .measure {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      margin: 0;
+    }
+
+    .measure div {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 12px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .measure div:last-child {
+      border-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .measure dt {
+      margin: 0;
+      font-size: 12px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .measure dd {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 600;
+      text-align: right;
+    }
+
+    .summary-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      padding: 20px 28px 28px;
+      border-bottom: 1px solid var(--line);
+      background: #fafafa;
+    }
+
+    .summary-card {
+      padding: 16px;
+      min-height: 148px;
+    }
+
+    .card-label {
+      margin: 0 0 12px;
+      font-size: 11px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .summary-card strong {
+      display: block;
+      margin-bottom: 10px;
+      font-size: 2rem;
+      line-height: 1;
+    }
+
+    .summary-card p {
+      margin: 0;
+      font-size: 0.95rem;
+      line-height: 1.6;
+      color: #252525;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: 250px minmax(0, 1fr);
+      gap: 24px;
+      padding: 28px;
+    }
+
+    .toc {
+      position: sticky;
+      top: 20px;
+      align-self: start;
+      padding: 18px;
+    }
+
+    .toc h2 {
+      margin: 0 0 12px;
+      font-size: 0.95rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .toc ul {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 10px;
+    }
+
+    .toc a {
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      text-decoration: none;
+      color: var(--muted);
+    }
+
+    .toc a:hover,
+    .toc a:focus {
+      color: var(--accent);
+    }
+
+    main {
+      min-width: 0;
+    }
+
+    section {
+      padding-bottom: 26px;
+      margin-bottom: 26px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    section:last-child {
+      border-bottom: 0;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .eyebrow {
+      margin: 0 0 10px;
+      font-size: 12px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    h2 {
+      margin: 0 0 16px;
+      font-size: clamp(1.6rem, 2.5vw, 2.2rem);
+      letter-spacing: -0.02em;
+      text-transform: uppercase;
+    }
+
+    p {
+      margin: 0 0 16px;
+      max-width: 74ch;
+      line-height: 1.8;
+      color: #1d1d1d;
+    }
+
+    p:last-child { margin-bottom: 0; }
+
+    .lead-block {
+      padding: 18px;
+      margin-bottom: 18px;
+      border: 1px solid var(--line);
+      background: #fcfcfc;
+    }
+
+    .lead-block p {
+      margin: 0;
+      font-size: 1.02rem;
+      color: #1a1a1a;
+    }
+
+    .score-row {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      margin: 18px 0 22px;
+    }
+
+    .score-card {
+      padding: 14px 16px;
+    }
+
+    .score-card strong {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 1.55rem;
+      line-height: 1;
+    }
+
+    .score-card p {
+      margin: 0;
+      font-size: 0.92rem;
+      line-height: 1.6;
+      color: #2e2e2e;
+    }
+
+    .diagram-grid {
+      grid-template-columns: 1fr;
+      margin: 24px 0;
+    }
+
+    figure {
+      margin: 0;
+      padding: 18px;
+    }
+
+    svg {
+      width: 100%;
+      height: auto;
+      display: block;
+      background: #ffffff;
+      border: 1px solid var(--line);
+    }
+
+    figcaption {
+      margin-top: 12px;
+      font-size: 0.93rem;
+      line-height: 1.65;
+      color: #2a2a2a;
+    }
+
+    .code-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      margin: 20px 0;
+    }
+
+    .code-block {
+      overflow: hidden;
+    }
+
+    .code-block header {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--line);
+      font-family: var(--mono);
+      font-size: 12px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      background: #f0f0f0;
+    }
+
+    pre {
+      margin: 0;
+      padding: 16px;
+      overflow-x: auto;
+      font-size: 0.9rem;
+      line-height: 1.65;
+      color: #111111;
+    }
+
+    .stage-grid {
+      grid-template-columns: 1.2fr 0.8fr;
+      align-items: start;
+      gap: 18px;
+      margin-top: 18px;
+    }
+
+    .stage-card,
+    .note {
+      padding: 16px;
+    }
+
+    .stage-card h3,
+    .note h3 {
+      margin: 0 0 10px;
+      font-size: 1rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .stage-card ul,
+    .note ul {
+      margin: 0;
+      padding-left: 18px;
+      line-height: 1.8;
+      color: #1d1d1d;
+    }
+
+    .drift-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      margin-top: 18px;
+    }
+
+    .footer-note {
+      padding: 24px 28px 30px;
+      border-top: 1px solid var(--line);
+      background: #fafafa;
+      font-size: 0.95rem;
+      line-height: 1.7;
+      color: #2e2e2e;
+    }
+
+    .footer-note p {
+      margin: 0;
+      max-width: none;
+    }
+
+    @media (max-width: 980px) {
+      .header-grid,
+      .content,
+      .summary-grid,
+      .score-row,
+      .code-grid,
+      .stage-grid,
+      .drift-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .toc {
+        position: static;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .page {
+        width: min(100vw - 14px, 1180px);
+        margin: 7px auto 24px;
+      }
+
+      .masthead,
+      .summary-grid,
+      .content,
+      .footer-note {
+        padding-left: 18px;
+        padding-right: 18px;
+      }
+
+      h1 {
+        max-width: none;
+        font-size: clamp(2.2rem, 12vw, 3.4rem);
+      }
+
+      pre {
+        font-size: 0.82rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="masthead">
+      <p class="kicker">Reliability Engineering Article · Prompt Evaluation Workflow</p>
+      <h1>Prompt Reliability Workflow</h1>
+      <p class="lede">This system exists because prompt behavior is unstable under repeat load. A draft that appears correct on one input can fail on the tenth, and a prompt that performs well for summarization may break when asked to extract, classify, or compose a reply at production volume. The work described here treats prompts as controlled process instructions. Variants are versioned, exercised against a fixed evaluation set, scored with the same rubric, reviewed in a closed loop, and watched for drift after release. The objective is not elegant prompt writing. The objective is stable service output.</p>
+      <div class="header-grid">
+        <div class="panel">
+          <dl class="measure">
+            <div><dt>Task Patterns</dt><dd>Summarize · Extract · Classify · Reply</dd></div>
+            <div><dt>Model Surface</dt><dd>Gemini Flash via lightweight Python harness</dd></div>
+            <div><dt>Primary Rubric</dt><dd>Format stability · Completeness · Usefulness</dd></div>
+            <div><dt>Control Ledger</dt><dd>Prompt versions, notes, and scores tracked in Google Sheets</dd></div>
+          </dl>
+        </div>
+        <div class="panel">
+          <p>The operating assumption is simple: language model prompts are manufacturing inputs, not creative artifacts. If the input is not versioned, if the test cases are not frozen, or if review criteria shift between runs, the team cannot explain why one prompt was approved and another was reworked. That absence of traceability is the defect this workflow removes.</p>
+        </div>
+      </div>
+    </header>
+
+    <div class="summary-grid" aria-label="Summary score cards">
+      <article class="summary-card">
+        <p class="card-label">Reliability Target</p>
+        <strong>98%</strong>
+        <p>Expected conformance to required output structure across repeated runs before a prompt is eligible for release.</p>
+      </article>
+      <article class="summary-card">
+        <p class="card-label">Evaluation Unit</p>
+        <strong>Case Set</strong>
+        <p>A frozen bundle of representative inputs spanning normal load, edge cases, and known failure shapes for each task pattern.</p>
+      </article>
+      <article class="summary-card">
+        <p class="card-label">Release Decision</p>
+        <strong>Gate</strong>
+        <p>Approval is withheld until the same prompt variant clears both numeric thresholds and a recorded reviewer check.</p>
+      </article>
+      <article class="summary-card">
+        <p class="card-label">Post-Release Watch</p>
+        <strong>Drift</strong>
+        <p>Historical scores are retained so regressions can be detected even when the prompt text itself has not changed.</p>
+      </article>
+    </div>
+
+    <div class="content">
+      <aside class="toc" aria-label="Table of contents">
+        <h2>QA Stages</h2>
+        <ul>
+          <li><a href="#stage-01">Contain Instability</a></li>
+          <li><a href="#stage-02">Freeze The Evaluation Set</a></li>
+          <li><a href="#stage-03">Define The Rubric</a></li>
+          <li><a href="#stage-04">Run Controlled Variants</a></li>
+          <li><a href="#stage-05">Version And Review</a></li>
+          <li><a href="#stage-06">Approve Or Rework</a></li>
+          <li><a href="#stage-07">Detect Drift Over Time</a></li>
+        </ul>
+      </aside>
+
+      <main>
+        <section id="stage-01">
+          <p class="eyebrow">QA Stage 01</p>
+          <h2>Contain Instability</h2>
+          <div class="lead-block">
+            <p>The first problem is not low model intelligence. It is uncontrolled variance. A prompt can pass an informal spot check and still fail operationally because output structure shifts, required fields disappear, or the model becomes less useful when the input is longer, noisier, or less explicit than the example that inspired the prompt in the first place.</p>
+          </div>
+          <p>In business terms, the failure modes are repetitive and expensive. A summarization prompt can omit a decision deadline. An extraction prompt can produce an extra heading that breaks downstream parsing. A classification prompt can hedge between two labels instead of selecting one. A reply prompt can over-answer, under-answer, or ignore a required tone constraint. None of these defects is dramatic in isolation. Their cost appears when the process is repeated hundreds of times and operators must repair outputs by hand.</p>
+          <p>The workflow begins by treating every prompt variant as a unit under test. That means the team does not ask whether a prompt is clever, natural, or persuasive. The team asks whether the prompt produces an acceptable output envelope under repeated execution. The baseline prompts and structured variations may differ by role instructions, few-shot examples, formatting rules, or task-specific wording, but those changes are handled as controlled modifications to a testable artifact. Once that framing is adopted, prompt evaluation starts to resemble any other reliability program: define operating conditions, define failure, run the same workload, record the result, then decide whether to ship or rework.</p>
+          <div class="score-row">
+            <article class="score-card">
+              <p class="card-label">Observed Defect</p>
+              <strong>Variance</strong>
+              <p>Repeated runs on similar inputs drift in structure or decision quality even when the model and task stay constant.</p>
+            </article>
+            <article class="score-card">
+              <p class="card-label">Containment Action</p>
+              <strong>Freeze Variables</strong>
+              <p>Keep prompt text, input case, and scoring rules explicit so root causes are attributable rather than speculative.</p>
+            </article>
+            <article class="score-card">
+              <p class="card-label">Release Principle</p>
+              <strong>No Hero Runs</strong>
+              <p>A single impressive output has no release value unless it survives the same workload as every competing version.</p>
+            </article>
+          </div>
+        </section>
+
+        <section id="stage-02">
+          <p class="eyebrow">QA Stage 02</p>
+          <h2>Freeze The Evaluation Set</h2>
+          <p>Reliability work fails quickly when the test bed moves with the prompt. For that reason the second step is to define an evaluation set before version comparison becomes active. The set is organized by business task pattern: summarize, extract, classify, and reply. Each pattern contains routine cases, ambiguous cases, and cases specifically chosen because they previously caused unstable behavior. The point is not volume for its own sake. The point is stable coverage of the operating range.</p>
+          <p>A useful evaluation set usually contains three layers. The first layer checks nominal behavior, where the input is clear and the requested output is straightforward. The second layer checks boundary behavior, such as mixed formatting, long passages, partial instructions, or conflicting signals. The third layer checks recovery behavior, where the prompt should still fail in a controlled way by preserving format, stating uncertainty, or declining to invent missing fields. When these layers are mixed, improvement claims become meaningful because every prompt version faces the same workload.</p>
+          <p>The README context indicates a lightweight Python harness repeatedly executed examples through Gemini Flash. That matters because repetition reveals what a single pass conceals. A prompt that scores well on one extraction example can still show intermittent schema failure after ten runs on the same input. Repeated execution turns stochastic variation into something measurable. The evaluation set therefore includes both case diversity and run repetition. Together they create the minimum signal required to compare prompt variants honestly.</p>
+          <div class="stage-grid">
+            <article class="stage-card">
+              <h3>Evaluation Set Rules</h3>
+              <ul>
+                <li>One case library per task pattern, with common identifiers carried through every experiment.</li>
+                <li>Representative business inputs, not synthetic toy prompts, unless a synthetic case is isolating a known defect.</li>
+                <li>Repeated execution counts held constant across versions so run-to-run variance is comparable.</li>
+                <li>Frozen expected outputs or expected properties recorded before ranking prompt variants.</li>
+              </ul>
+            </article>
+            <aside class="note">
+              <h3>Stage Card</h3>
+              <ul>
+                <li>Coverage objective: normal, boundary, and recovery behavior.</li>
+                <li>Primary artifact: fixed case inventory with stable identifiers.</li>
+                <li>Failure if skipped: every comparison becomes anecdotal.</li>
+              </ul>
+            </aside>
+          </div>
+          <div class="code-grid">
+            <div class="code-block">
+              <header>Harness Loop</header>
+              <pre><code>for case in evaluation_set:
+    for run_id in range(REPEATS):
+        output = gemini_flash(prompt.render(case["input"]))
+        result = rubric.score(output, case)
+        ledger.append({
+            "case_id": case["id"],
+            "run_id": run_id,
+            "prompt_version": prompt.version,
+            "scores": result,
+        })</code></pre>
+            </div>
+            <div class="code-block">
+              <header>Case Record</header>
+              <pre><code>{
+  "id": "extract-014",
+  "pattern": "extract",
+  "failure_mode": "drops deadline when email chain is noisy",
+  "required_fields": ["owner", "deadline", "status"],
+  "allowed_fallback": "unknown"
+}</code></pre>
+            </div>
+          </div>
+        </section>
+
+        <section id="stage-03">
+          <p class="eyebrow">QA Stage 03</p>
+          <h2>Define The Rubric</h2>
+          <p>The rubric is intentionally narrow. The workflow scores format stability, completeness, and usefulness because those dimensions map directly to whether the output can be trusted by a human operator or an adjacent system. Format stability asks whether the output obeys the required schema or layout every time. Completeness asks whether required information is present, including explicit acknowledgment when information is unavailable. Usefulness asks whether the answer is operationally serviceable rather than merely well-phrased.</p>
+          <p>These dimensions are not equal in every context. For extraction and classification, format stability usually acts as the primary gate because downstream systems depend on exact structure. For summarization and reply, usefulness may carry more weight, but it still cannot excuse schema drift if the prompt contract requires a certain frame. The manufacturing analogy is helpful here: a polished surface does not compensate for a part cut to the wrong dimensions. In the same way, eloquence does not compensate for a missing field.</p>
+          <p>The most effective rubric entries combine automated and manual checks. Format stability can often be scored deterministically with schema tests, regular expressions, or required section counts. Completeness may be partially automated if expected fields are known. Usefulness normally needs reviewer judgment, but that judgment is disciplined by short written criteria: Did the output support the business action? Did it overstate certainty? Did it introduce friction by burying the answer? With those constraints, reviewer input becomes part of the quality system rather than an escape hatch for preference.</p>
+          <div class="score-row">
+            <article class="score-card">
+              <p class="card-label">Metric A</p>
+              <strong>Format</strong>
+              <p>Binary or near-binary gate for output shape, section order, field presence, and machine-readability.</p>
+            </article>
+            <article class="score-card">
+              <p class="card-label">Metric B</p>
+              <strong>Complete</strong>
+              <p>Measures whether the output covers the requested facts or explicitly marks them unavailable without fabrication.</p>
+            </article>
+            <article class="score-card">
+              <p class="card-label">Metric C</p>
+              <strong>Useful</strong>
+              <p>Checks whether an operator could act on the result without substantial interpretation or repair.</p>
+            </article>
+          </div>
+          <div class="diagram-grid">
+            <figure>
+              <svg viewBox="0 0 980 500" role="img" aria-labelledby="rubric-title rubric-desc">
+                <title id="rubric-title">Rubric and regression companion diagram</title>
+                <desc id="rubric-desc">A black-and-white matrix showing format stability, completeness, and usefulness with thresholds, automatic checks, reviewer checks, and regression watch outcomes.</desc>
+                <defs>
+                  <marker id="arrow-b" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+                    <path d="M0,0 L10,5 L0,10 z" fill="#111111"></path>
+                  </marker>
+                </defs>
+                <rect x="22" y="22" width="936" height="456" fill="#fcfcfc" stroke="#d4d4d4"/>
+                <text x="44" y="58" font-family="IBM Plex Sans" font-size="24" fill="#111111">Rubric and Regression Companion</text>
+                <text x="44" y="84" font-family="IBM Plex Mono" font-size="12" fill="#5b5b5b">Thresholds, check modes, and hold logic for prompt release</text>
+
+                <rect x="44" y="116" width="560" height="270" fill="#ffffff" stroke="#bdbdbd"/>
+                <line x1="44" y1="166" x2="604" y2="166" stroke="#bdbdbd"/>
+                <line x1="184" y1="116" x2="184" y2="386" stroke="#bdbdbd"/>
+                <line x1="254" y1="116" x2="254" y2="386" stroke="#bdbdbd"/>
+                <line x1="424" y1="116" x2="424" y2="386" stroke="#bdbdbd"/>
+                <line x1="44" y1="242" x2="604" y2="242" stroke="#d4d4d4"/>
+                <line x1="44" y1="314" x2="604" y2="314" stroke="#d4d4d4"/>
+
+                <text x="58" y="146" font-family="IBM Plex Mono" font-size="11" fill="#5b5b5b">Dimension</text>
+                <text x="198" y="146" font-family="IBM Plex Mono" font-size="11" fill="#5b5b5b">Threshold</text>
+                <text x="268" y="146" font-family="IBM Plex Mono" font-size="11" fill="#5b5b5b">Primary Check</text>
+                <text x="438" y="146" font-family="IBM Plex Mono" font-size="11" fill="#5b5b5b">Regression Hold</text>
+
+                <text x="58" y="198" font-family="IBM Plex Sans" font-size="17" fill="#111111">Format stability</text>
+                <text x="198" y="198" font-family="IBM Plex Sans" font-size="16" fill="#111111">≥ 0.98</text>
+                <text x="268" y="190" font-family="IBM Plex Sans" font-size="15" fill="#111111">Schema and</text>
+                <text x="268" y="210" font-family="IBM Plex Sans" font-size="15" fill="#111111">layout tests</text>
+                <text x="438" y="190" font-family="IBM Plex Sans" font-size="15" fill="#111111">Any break</text>
+                <text x="438" y="210" font-family="IBM Plex Sans" font-size="15" fill="#111111">blocks release</text>
+
+                <text x="58" y="284" font-family="IBM Plex Sans" font-size="17" fill="#111111">Completeness</text>
+                <text x="198" y="284" font-family="IBM Plex Sans" font-size="16" fill="#111111">≥ 0.92</text>
+                <text x="268" y="276" font-family="IBM Plex Sans" font-size="15" fill="#111111">Required field</text>
+                <text x="268" y="296" font-family="IBM Plex Sans" font-size="15" fill="#111111">coverage drop</text>
+                <text x="438" y="276" font-family="IBM Plex Sans" font-size="15" fill="#111111">Two-case drop</text>
+                <text x="438" y="296" font-family="IBM Plex Sans" font-size="15" fill="#111111">triggers review</text>
+
+                <text x="58" y="354" font-family="IBM Plex Sans" font-size="17" fill="#111111">Usefulness</text>
+                <text x="198" y="354" font-family="IBM Plex Sans" font-size="16" fill="#111111">≥ 0.85</text>
+                <text x="268" y="346" font-family="IBM Plex Sans" font-size="15" fill="#111111">Reviewer operating</text>
+                <text x="268" y="366" font-family="IBM Plex Sans" font-size="15" fill="#111111">judgment</text>
+                <text x="438" y="346" font-family="IBM Plex Sans" font-size="15" fill="#111111">Trend decline</text>
+                <text x="438" y="366" font-family="IBM Plex Sans" font-size="15" fill="#111111">blocks promotion</text>
+
+                <rect x="622" y="126" width="274" height="260" fill="#f8f8f8" stroke="#bdbdbd"/>
+                <text x="644" y="156" font-family="IBM Plex Mono" font-size="12" fill="#5b5b5b">Release Gate</text>
+                <rect x="644" y="178" width="230" height="40" fill="#ffffff" stroke="#8c8c8c"/>
+                <text x="663" y="203" font-family="IBM Plex Sans" font-size="16" fill="#111111">Pass thresholds on frozen set</text>
+                <path d="M759 218 L759 245" stroke="#111111" stroke-width="2" marker-end="url(#arrow-b)"/>
+                <rect x="644" y="246" width="230" height="40" fill="#ffffff" stroke="#8c8c8c"/>
+                <text x="677" y="271" font-family="IBM Plex Sans" font-size="16" fill="#111111">Reviewer confirms utility</text>
+                <path d="M759 286 L759 313" stroke="#111111" stroke-width="2" marker-end="url(#arrow-b)"/>
+                <rect x="644" y="314" width="230" height="40" fill="#111111" stroke="#111111"/>
+                <text x="713" y="339" font-family="IBM Plex Sans" font-size="16" fill="#ffffff">Approve</text>
+
+                <rect x="44" y="410" width="872" height="36" fill="#f0f0f0" stroke="#d4d4d4"/>
+                <text x="58" y="433" font-family="IBM Plex Mono" font-size="12" fill="#5b5b5b">Companion rule: a numeric gain never overrides a new regression in a previously stable case.</text>
+              </svg>
+              <figcaption>The rubric is designed to keep release arguments short. A prompt variant either meets the threshold set on the frozen cases and clears reviewer judgment, or it returns to rework. The diagram also shows the regression companion rule that stops teams from trading away a stable case just to gain a better average score elsewhere.</figcaption>
+            </figure>
+          </div>
+        </section>
+
+        <section id="stage-04">
+          <p class="eyebrow">QA Stage 04</p>
+          <h2>Run Controlled Variants</h2>
+          <p>Once the workload and rubric are frozen, prompt variants can be compared without ambiguity. The README context points to baseline prompts and structured variations built from role instructions, few-shot examples, formatting rules, and task-specific wording. In this workflow those are treated as change categories. Each change category is introduced deliberately so the test can answer a narrow question: Did a role frame reduce hallucinated filler? Did one example improve extraction completeness? Did stricter formatting rules improve schema stability but lower usefulness? Small changes make failure interpretable.</p>
+          <p>The Python harness is intentionally lightweight because the critical requirement is consistency, not platform complexity. A simple runner that sends the same case bundle to Gemini Flash, records raw outputs, computes the three rubric scores, and writes the result to a ledger is enough to support engineering decisions. The ledger becomes the durable memory of the system. It records which version ran, on which case, under which run identifier, with which notes. That is the difference between iteration and random trial. The team can revisit an approved version months later and see exactly what it beat and where it remained weak.</p>
+          <p>Repeated execution also prevents false confidence. A variant may improve the mean usefulness score while increasing the dispersion of format stability. If only averages are reviewed, the prompt can look better while becoming more dangerous. The harness therefore needs per-case and per-run visibility, not just a final score line. Reliability engineering cares about tail events because tail events become manual rework. A weak case that fails twice a day can erase the value of many clean cases that never need intervention.</p>
+          <div class="code-grid">
+            <div class="code-block">
+              <header>Prompt Ledger Entry</header>
+              <pre><code>{
+  "version": "reply.v1.7",
+  "parent": "reply.v1.6",
+  "change_note": "added explicit refusal boundary and one repair example",
+  "review_state": "candidate",
+  "scores": {
+    "format_stability": 0.99,
+    "completeness": 0.91,
+    "usefulness": 0.88
+  }
+}</code></pre>
+            </div>
+            <div class="code-block">
+              <header>Regression Gate</header>
+              <pre><code>def release_gate(scores, regressions):
+    thresholds = {"format": 0.98, "complete": 0.92, "useful": 0.85}
+    if regressions:
+        return "rework"
+    if scores["format"] < thresholds["format"]:
+        return "rework"
+    if scores["complete"] < thresholds["complete"]:
+        return "review"
+    return "approve"</code></pre>
+            </div>
+          </div>
+          <div class="score-row">
+            <article class="score-card">
+              <p class="card-label">Change Control</p>
+              <strong>One Delta</strong>
+              <p>Variants should differ by a small, named change so the observed effect can be attributed rather than guessed.</p>
+            </article>
+            <article class="score-card">
+              <p class="card-label">Signal Quality</p>
+              <strong>Per-Case</strong>
+              <p>Mean scores alone are insufficient; the ledger needs case-level detail to expose brittle edges and intermittent failure.</p>
+            </article>
+            <article class="score-card">
+              <p class="card-label">Operational View</p>
+              <strong>Tail Risk</strong>
+              <p>A few recurring failures matter more than many clean runs because those failures become visible human repair work.</p>
+            </article>
+          </div>
+        </section>
+
+        <section id="stage-05">
+          <p class="eyebrow">QA Stage 05</p>
+          <h2>Version And Review</h2>
+          <p>Prompt reliability improves when versioning is explicit enough to support audit. Every prompt promoted into the evaluation flow should carry a stable identifier, a parent reference, a short change note, a task pattern, and the score line produced by the harness. This is where the Google Sheets ledger becomes useful. It is not merely a reporting surface. It is the review surface that allows an operator, analyst, or future maintainer to understand why a version moved forward, why another was rejected, and which defect the accepted change was intended to remove.</p>
+          <p>Review loops are structured rather than conversational. A reviewer does not rewrite the prompt directly in the ledger and hope for improvement. Instead, the reviewer records whether the issue is structural, content-related, or policy-related; whether it appeared in normal cases or only edge cases; and whether the failure justifies a new variant or a change to the evaluation set. This distinction matters. If a new business requirement appears, the evaluation set may need to expand. If the requirement already existed and the prompt missed it, the prompt needs rework. Without that discipline, teams quietly change both the target and the instrument at the same time.</p>
+          <p>The best-performing prompts are then packaged into a reusable library and handbook. That packaging step is still part of reliability work. A prompt that only exists in an experiment sheet is vulnerable to accidental mutation and copy-paste drift. A prompt recorded as an approved library asset, with its intended task pattern and release notes, can be reused with far less entropy. The handbook is not a style guide. It is a controlled release note for prompt assets that have already cleared the evaluation process.</p>
+          <div class="diagram-grid">
+            <figure>
+              <svg viewBox="0 0 980 700" role="img" aria-labelledby="wheel-title wheel-desc">
+                <title id="wheel-title">Evaluation wheel with historical drift strip</title>
+                <desc id="wheel-desc">A monochrome wheel showing prompt versions rotating through test cases, scoring, review, approval, and rework, with a lower strip showing historical drift across released versions.</desc>
+                <defs>
+                  <marker id="arrow-a" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+                    <path d="M0,0 L10,5 L0,10 z" fill="#111111"></path>
+                  </marker>
+                </defs>
+                <rect x="20" y="20" width="940" height="660" fill="#fcfcfc" stroke="#d4d4d4"/>
+                <text x="44" y="58" font-family="IBM Plex Sans" font-size="24" fill="#111111">Prompt Evaluation Wheel</text>
+                <text x="44" y="84" font-family="IBM Plex Mono" font-size="12" fill="#5b5b5b">Versions rotate through the same cases, the same scoring frame, and the same approval gate</text>
+
+                <circle cx="350" cy="275" r="150" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+                <circle cx="350" cy="275" r="88" fill="#f4f4f4" stroke="#bdbdbd"/>
+                <text x="306" y="262" font-family="IBM Plex Sans" font-size="26" fill="#111111">Prompt</text>
+                <text x="295" y="293" font-family="IBM Plex Sans" font-size="26" fill="#111111">Version Line</text>
+
+                <path d="M350 125 A150 150 0 0 1 492 213" fill="none" stroke="#111111" stroke-width="26"/>
+                <path d="M492 213 A150 150 0 0 1 476 382" fill="none" stroke="#666666" stroke-width="26"/>
+                <path d="M476 382 A150 150 0 0 1 327 423" fill="none" stroke="#9b9b9b" stroke-width="26"/>
+                <path d="M327 423 A150 150 0 0 1 208 334" fill="none" stroke="#c0c0c0" stroke-width="26"/>
+                <path d="M208 334 A150 150 0 0 1 244 156" fill="none" stroke="#e0e0e0" stroke-width="26"/>
+
+                <circle cx="350" cy="95" r="34" fill="#111111"/>
+                <text x="298" y="101" font-family="IBM Plex Sans" font-size="18" fill="#ffffff">Test Cases</text>
+
+                <circle cx="522" cy="220" r="34" fill="#5b5b5b"/>
+                <text x="487" y="226" font-family="IBM Plex Sans" font-size="18" fill="#ffffff">Scoring</text>
+
+                <circle cx="485" cy="415" r="34" fill="#858585"/>
+                <text x="458" y="421" font-family="IBM Plex Sans" font-size="18" fill="#ffffff">Review</text>
+
+                <circle cx="280" cy="455" r="34" fill="#b0b0b0"/>
+                <text x="249" y="461" font-family="IBM Plex Sans" font-size="18" fill="#111111">Approval</text>
+
+                <circle cx="176" cy="305" r="34" fill="#dfdfdf" stroke="#8c8c8c"/>
+                <text x="147" y="311" font-family="IBM Plex Sans" font-size="18" fill="#111111">Rework</text>
+
+                <path d="M579 275 C645 275 690 238 690 188 C690 145 654 114 602 114" fill="none" stroke="#111111" stroke-width="2" marker-end="url(#arrow-a)"/>
+                <text x="619" y="152" font-family="IBM Plex Mono" font-size="12" fill="#5b5b5b">release loop</text>
+
+                <circle cx="350" cy="112" r="13" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+                <circle cx="470" cy="208" r="13" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+                <circle cx="446" cy="378" r="13" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+                <circle cx="301" cy="423" r="13" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+                <circle cx="213" cy="288" r="13" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+                <text x="341" y="117" font-family="IBM Plex Mono" font-size="12" fill="#111111">v1</text>
+                <text x="461" y="213" font-family="IBM Plex Mono" font-size="12" fill="#111111">v2</text>
+                <text x="437" y="383" font-family="IBM Plex Mono" font-size="12" fill="#111111">v3</text>
+                <text x="292" y="428" font-family="IBM Plex Mono" font-size="12" fill="#111111">v4</text>
+                <text x="204" y="293" font-family="IBM Plex Mono" font-size="12" fill="#111111">v5</text>
+
+                <rect x="602" y="220" width="300" height="210" fill="#ffffff" stroke="#bdbdbd"/>
+                <text x="624" y="252" font-family="IBM Plex Mono" font-size="12" fill="#5b5b5b">Stage Rules</text>
+                <text x="624" y="292" font-family="IBM Plex Sans" font-size="18" fill="#111111">1. Run the same case IDs</text>
+                <text x="624" y="324" font-family="IBM Plex Sans" font-size="18" fill="#111111">2. Score with the same rubric</text>
+                <text x="624" y="356" font-family="IBM Plex Sans" font-size="18" fill="#111111">3. Record notes before promotion</text>
+                <text x="624" y="388" font-family="IBM Plex Sans" font-size="18" fill="#111111">4. Return regressions to rework</text>
+
+                <rect x="52" y="520" width="856" height="120" fill="#f6f6f6" stroke="#bdbdbd"/>
+                <text x="76" y="548" font-family="IBM Plex Mono" font-size="12" fill="#5b5b5b">Historical Drift Strip</text>
+                <line x1="76" y1="608" x2="878" y2="608" stroke="#a8a8a8"/>
+                <line x1="76" y1="568" x2="878" y2="568" stroke="#e0e0e0"/>
+                <line x1="76" y1="588" x2="878" y2="588" stroke="#e0e0e0"/>
+                <text x="76" y="623" font-family="IBM Plex Mono" font-size="12" fill="#5b5b5b">Q1</text>
+                <text x="255" y="623" font-family="IBM Plex Mono" font-size="12" fill="#5b5b5b">Q2</text>
+                <text x="434" y="623" font-family="IBM Plex Mono" font-size="12" fill="#5b5b5b">Q3</text>
+                <text x="613" y="623" font-family="IBM Plex Mono" font-size="12" fill="#5b5b5b">Q4</text>
+                <text x="792" y="623" font-family="IBM Plex Mono" font-size="12" fill="#5b5b5b">Q5</text>
+                <polyline points="90,578 245,575 410,584 580,593 844,603" fill="none" stroke="#111111" stroke-width="3"/>
+                <polyline points="90,592 245,588 410,586 580,598 844,610" fill="none" stroke="#707070" stroke-width="3"/>
+                <circle cx="90" cy="578" r="4" fill="#111111"/>
+                <circle cx="245" cy="575" r="4" fill="#111111"/>
+                <circle cx="410" cy="584" r="4" fill="#111111"/>
+                <circle cx="580" cy="593" r="4" fill="#111111"/>
+                <circle cx="844" cy="603" r="4" fill="#111111"/>
+                <rect x="732" y="536" width="146" height="44" fill="#ffffff" stroke="#bdbdbd"/>
+                <text x="748" y="554" font-family="IBM Plex Mono" font-size="11" fill="#5b5b5b">solid: format stability</text>
+                <text x="748" y="570" font-family="IBM Plex Mono" font-size="11" fill="#5b5b5b">gray: usefulness</text>
+              </svg>
+              <figcaption>The wheel formalizes circulation. Prompt versions do not move linearly from drafting to release. They cycle through the same cases, scoring, review, approval, and rework. The lower strip holds the longer memory of the system, showing how released versions age over time and where drift begins to appear in metrics that once looked safe.</figcaption>
+            </figure>
+          </div>
+        </section>
+
+        <section id="stage-06">
+          <p class="eyebrow">QA Stage 06</p>
+          <h2>Approve Or Rework</h2>
+          <p>Approval is a release decision, not a compliment. A prompt variant is approved only when it clears the numeric gate on the frozen evaluation set and the review notes show no unaddressed regression in stable cases. The recorded outcome should be terse: approve, hold, or rework. Long rationalizations usually indicate that the rubric is weak or the reviewers are allowing exceptions to compensate for that weakness.</p>
+          <p>Rework loops are equally controlled. A reviewer note should specify the failure mode, the affected cases, and the intended correction mechanism. If the defect is a formatting break, the next variant may add stricter layout instructions. If the defect is missing content, the next variant may add a few-shot repair example or a clearer decision boundary. If the defect reflects ambiguous product requirements, the prompt should not absorb the ambiguity by itself. The requirement should be clarified and the evaluation set updated explicitly.</p>
+          <p>This is also the point where the reusable prompt library is formed. An approved prompt is packaged with its task classification, expected output contract, change history, and known limitations. The handbook entry tells future users what the prompt was tested for and what it was not tested for. That documentation prevents the common failure where a high-performing extraction prompt is copied into a reply task simply because both operate on customer text. Reliability depends on preserving scope boundaries after approval, not just during evaluation.</p>
+          <div class="stage-grid">
+            <article class="stage-card">
+              <h3>Approval Criteria</h3>
+              <ul>
+                <li>All release thresholds met on the frozen set with no unreviewed regression.</li>
+                <li>Reviewer notes recorded before the version is labeled approved.</li>
+                <li>Prompt asset stored in the library with task pattern and intended output contract.</li>
+                <li>Known limitations stated so downstream users do not expand scope accidentally.</li>
+              </ul>
+            </article>
+            <aside class="note">
+              <h3>Rework Triggers</h3>
+              <ul>
+                <li>Schema breaks in previously stable cases.</li>
+                <li>Completeness decline after a format fix.</li>
+                <li>Useful but verbose outputs that create manual cleanup work.</li>
+              </ul>
+            </aside>
+          </div>
+        </section>
+
+        <section id="stage-07">
+          <p class="eyebrow">QA Stage 07</p>
+          <h2>Detect Drift Over Time</h2>
+          <p>Release is not the end of reliability work because prompt performance can drift even when the prompt text remains unchanged. Model updates, input mix changes, new document shapes, and operator expectations all alter the effective environment. That is why the workflow finishes with historical drift detection. The score history preserved in Google Sheets is more than archive data. It is the reference baseline that allows the team to rerun a released prompt on sentinel cases and determine whether reliability has moved outside tolerance.</p>
+          <p>Drift detection is most useful when it separates signal types. A drop in format stability usually demands immediate investigation because it can break automation outright. A decline in completeness may indicate that the input distribution has shifted and new cases should be added to the evaluation set. A slow decline in usefulness can signal that the business action has changed even if the prompt still answers the original question correctly. In other words, the workflow distinguishes between prompt decay, workload drift, and requirement drift. Each requires a different correction path.</p>
+          <p>Sentinel monitoring does not need to be elaborate. A small fixed strip of historically difficult cases, rerun at intervals, is enough to catch many regressions early. If the historical strip falls while the broader evaluation set remains stable, the team has early warning that a known edge case is re-emerging. If both fall, the approved library asset should be sent back into the wheel and treated as a new candidate version. This loop closes the reliability story. Prompt evaluation becomes a maintained production discipline rather than a one-time workshop exercise.</p>
+          <div class="drift-grid">
+            <article class="score-card">
+              <p class="card-label">Drift Signal</p>
+              <strong>Structure Down</strong>
+              <p>Re-run sentinel cases immediately; format decline is the fastest route to broken downstream processing.</p>
+            </article>
+            <article class="score-card">
+              <p class="card-label">Drift Signal</p>
+              <strong>Utility Down</strong>
+              <p>Check whether business expectations changed before assuming the prompt itself is the only source of the regression.</p>
+            </article>
+          </div>
+          <p>The result is a disciplined workflow for prompt assets that looks much closer to quality control than to open-ended experimentation. Business task patterns are defined, prompt variants are introduced in controlled increments, repeated examples run through Gemini Flash, results are scored for stability, completeness, and usefulness, and approval decisions are recorded with enough rigor to survive reuse. What emerges is not a collection of clever prompts. It is an operating system for evaluating them.</p>
+        </section>
+      </main>
+    </div>
+
+    <footer class="footer-note">
+      <p>This article is intentionally monochrome and procedural because the subject is variance control. The follow-on portfolio piece should not inherit this visual system automatically; the next pending project, <code>realtime-marketing-decision-engine</code>, should be designed around live operational decisioning rather than QA-line austerity.</p>
+    </footer>
+  </div>
+</body>
+</html>
