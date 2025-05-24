@@ -24,3 +24,7 @@
 
 - Task summary: By this point I had the rough direction, so the work became more practical. I spent most of the day trying to list the sections, messages, and data that need to appear in the project and make the whole thing feel less half baked. By now I had enough structure to keep going without staring at the screen too long, which honestly helped a lot. I spent part of the day just reducing confusion between components, names, and responsibilities.
 - Deliverable: I wrapped up the day with content outline mostly in place. It was not perfect, but it was good enough to keep the project moving. I also left myself a few rough reminders for the next day so I would not have to rediscover the same context again.
+## 2025-05-24 - Day 5: Content outline
+
+- Task summary: Saturday morning — couldn't stop thinking about the edge case from Friday. Opened the notebook and patched it before I forgot.
+- Deliverable: Wrapped it up properly this time.
