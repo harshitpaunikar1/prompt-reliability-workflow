@@ -44,3 +44,7 @@
 
 - Task summary: Closer to the end, I was mostly tightening things up instead of inventing new scope. The job for the day was to add the minimum JavaScript interactions needed to make the flow understandable so the final result looked a bit more complete. Once the base made some sense, I could finally move a bit faster and stop second guessing every tiny decision. There were a few moving parts here, so I kept simplifying the plan in my head before touching anything else.
 - Deliverable: Ended the day with working interactions in hand, plus a few side notes on what still needed fixing later. There were still a couple of loose parts, but nothing serious enough to block the next step.
+## 2025-05-29 - Day 9: Interactions
+
+- Task summary: Late-night fix: fixed the README section that was missing the setup step — embarrassing oversight.
+- Deliverable: Cleaner than this morning's version.
