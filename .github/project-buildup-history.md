@@ -48,3 +48,7 @@
 
 - Task summary: Late-night fix: fixed the README section that was missing the setup step — embarrassing oversight.
 - Deliverable: Cleaner than this morning's version.
+## 2025-05-30 - Day 10: Artifacts
+
+- Task summary: Closer to the end, I was mostly tightening things up instead of inventing new scope. The job for the day was to create or organize diagrams, screenshots, and supporting visuals so the final result looked a bit more complete. Most of the heavy lifting was already done, so this part was more about making the rough edges less obvious. The tricky bit was making the system sound realistic without pretending every edge case was solved.
+- Deliverable: Ended the day with support visuals in hand, plus a few side notes on what still needed fixing later. It was not super polished, just stable enough that I felt okay moving forward.
