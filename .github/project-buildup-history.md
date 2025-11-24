@@ -12,3 +12,7 @@
 
 - Task summary: Added a diff view for cases where the new prompt version scores worse than the previous version — helps identify regressions quickly during prompt iteration.
 - Deliverable: Regression diff view added to evaluation report.
+## 2025-11-24 - Day 4: Prompt versioning
+
+- Task summary: Implemented prompt versioning in the Reliability Workflow. Prompts are now stored with semantic version numbers and a human-readable changelog entry. The evaluation harness can compare any two versions head-to-head on the test dataset and produce a before/after performance report. This makes it much easier to have a principled iteration process instead of ad-hoc edits.
+- Deliverable: Prompt versioning with changelog and head-to-head comparison implemented.
