@@ -1,0 +1,39 @@
+{
+  "project_name": "Prompt Reliability Workflow",
+  "status": "done",
+  "completion_percent": 100,
+  "confidence_score": 90,
+  "last_agent": "Codex GPT-5 Production Engine",
+  "last_updated": "2026-04-26T10:41:41Z",
+  "files_created": [
+    "index.html",
+    "style.css",
+    "app.js",
+    "tracker.json",
+    "handoff.md",
+    "diagrams.md",
+    "assets/",
+    "assets/architecture-overview.svg",
+    "assets/workflow-overview.svg",
+    "assets/evidence-gap-map.svg"
+  ],
+  "completed_sections": [
+    "Monochrome Self-Contained Layout",
+    "QA Stage 01 - Contain Instability",
+    "QA Stage 02 - Freeze The Evaluation Set",
+    "QA Stage 03 - Define The Rubric",
+    "QA Stage 04 - Run Controlled Variants",
+    "QA Stage 05 - Version And Review",
+    "QA Stage 06 - Approve Or Rework",
+    "QA Stage 07 - Detect Drift Over Time",
+    "Evaluation Wheel Diagram",
+    "Rubric And Regression Companion Diagram",
+    "Inline Code Snippets",
+    "Portfolio Handoff Note"
+  ],
+  "pending_sections": [],
+  "blockers": [],
+  "next_best_task": "Move to `reliable-browser-video-calling/index.html` next and keep that rewrite visually distinct from this monochrome prompt QA piece while preserving the same documentation rigor.",
+  "quality_score": 93,
+  "publish_ready": true
+}
