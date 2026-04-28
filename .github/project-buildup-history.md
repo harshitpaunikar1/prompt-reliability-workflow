@@ -10,7 +10,7 @@
 - Deliverable: Evaluation harness built. Per-case and aggregate scoring reports output.
 ## 2025-11-17 - Day 3: Evaluation harness
 
-- Task summary: Added a diff view for cases where the new prompt version scores worse than the previous version — helps identify regressions quickly during prompt iteration.
+- Task summary: Added a diff view for cases where the new prompt version scores worse than the previous version - helps identify regressions quickly during prompt iteration.
 - Deliverable: Regression diff view added to evaluation report.
 ## 2025-11-24 - Day 4: Prompt versioning
 
